@@ -95,6 +95,80 @@ pub struct Guess {
     pub mask: [Correctness; 5],
 }
 
+impl Guess {
+    pub fn matches(&self, word: &str) -> bool {
+        assert_eq!(self.word.len(), 5);
+        assert_eq!(word.len(), 5);
+
+        let mut used = [false; 5];
+        for (i, ((g, &m), w)) in self
+            .word
+            .chars()
+            .zip(&self.mask)
+            .zip(word.chars())
+            .enumerate()
+        {
+            if m == Correctness::Correct {
+                if g != w {
+                    return false;
+                } else {
+                    used[i] = true;
+                }
+            }
+        }
+
+        for (i, (w, &m)) in word.chars().zip(&self.mask).enumerate() {
+            if m == Correctness::Correct {
+                // must be correct or we'd have returned above
+                continue;
+            }
+
+            let mut plausible = true;
+            if self
+                .word
+                .chars()
+                .zip(&self.mask)
+                .enumerate()
+                .any(|(j, (g, m))| {
+                    if g != w {
+                        return false;
+                    }
+
+                    if used[j] {
+                        return false;
+                    }
+
+                    match m {
+                        Correctness::Correct => {
+                            unreachable!("all correct guesses should have been returned or used")
+                        }
+                        Correctness::Misplaced if j == i => {
+                            // `w` was yellow in the same position last time
+                            plausible = false;
+                            return false;
+                        }
+                        Correctness::Misplaced => {
+                            used[j] = true;
+                            return true;
+                        }
+                        Correctness::Wrong => {
+                            plausible = false;
+                            return false;
+                        }
+                    }
+                })
+                && plausible
+            {
+                assert!(plausible);
+            } else if !plausible {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
 pub trait Guesser {
     fn guess(&mut self, history: &[Guess]) -> String;
 }
@@ -119,7 +193,47 @@ macro_rules! guesser {
 }
 
 #[cfg(test)]
+macro_rules! mask {
+    (C) => {$crate::Correctness::Correct};
+    (M) => {$crate::Correctness::Misplaced};
+    (W) => {$crate::Correctness::Wrong};
+    ($($c:tt)+) => {[
+        $(mask!($c)),+
+    ]}
+}
+
+#[cfg(test)]
 mod tests {
+    mod guess_matcher {
+        use crate::Guess;
+
+        macro_rules! check {
+            ($prev:literal + [$($mask:tt)+] allows $next:literal) => {
+                assert!(Guess {
+                    word: $prev.to_string(),
+                    mask: mask![$($mask )+]
+                }
+                .matches($next));
+            };
+
+            ($prev:literal + [$($mask:tt)+] disallows $next:literal) => {
+                assert!(!Guess {
+                    word: $prev.to_string(),
+                    mask: mask![$($mask )+]
+                }
+                .matches($next));
+            };
+        }
+
+        #[test]
+        fn matches() {
+            check!("abcde" + [C C C C C] allows "abcde");
+            check!("abcdf" + [C C C C C] disallows "abcde");
+            check!("abcde" + [W W W W W] allows "fghik");
+            check!("abcde" + [M M M M M] allows "eabcd");
+        }
+    }
+
     mod game {
         use crate::{Guess, Wordle};
 
@@ -195,19 +309,18 @@ mod tests {
 
             assert_eq!(w.play("right", guesser), Some(6));
         }
+
+        #[test]
+        fn oops() {
+            let w = Wordle::new();
+            let guesser = guesser!(|_history| { "wrong".to_string() });
+
+            assert_eq!(w.play("right", guesser), None);
+        }
     }
 
     mod compute {
         use crate::Correctness;
-
-        macro_rules! mask {
-            (C) => {Correctness::Correct};
-            (M) => {Correctness::Misplaced};
-            (W) => {Correctness::Wrong};
-            ($($c:tt)+) => {[
-                $(mask!($c)),+
-            ]}
-        }
 
         #[test]
         fn all_green() {
