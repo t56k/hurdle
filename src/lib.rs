@@ -88,6 +88,17 @@ impl Correctness {
 
         c
     }
+
+    pub fn patterns() -> impl Iterator<Item = [Self; 5]> {
+        itertools::iproduct!(
+            [Self::Correct, Self::Misplaced, Self::Wrong],
+            [Self::Correct, Self::Misplaced, Self::Wrong],
+            [Self::Correct, Self::Misplaced, Self::Wrong],
+            [Self::Correct, Self::Misplaced, Self::Wrong],
+            [Self::Correct, Self::Misplaced, Self::Wrong]
+        )
+        .map(|(a, b, c, d, e)| [a, b, c, d, e])
+    }
 }
 
 pub struct Guess {
@@ -214,6 +225,7 @@ mod tests {
                     mask: mask![$($mask )+]
                 }
                 .matches($next));
+                assert_eq!($crate::Correctness::compute($next, $prev), mask![$($mask )+]);
             };
 
             ($prev:literal + [$($mask:tt)+] disallows $next:literal) => {
@@ -222,6 +234,7 @@ mod tests {
                     mask: mask![$($mask )+]
                 }
                 .matches($next));
+                assert_ne!($crate::Correctness::compute($next, $prev), mask![$($mask )+]);
             };
         }
 
