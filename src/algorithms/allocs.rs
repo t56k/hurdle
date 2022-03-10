@@ -1,10 +1,10 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 
-use crate::{Correctness, Guess, Guesser, DICTIONARY};
+use crate::{Correctness, Guess, Guesser, Word, DICTIONARY};
 
 pub struct Allocs {
-    remaining: HashMap<&'static str, usize>,
+    remaining: HashMap<&'static Word, usize>,
 }
 
 impl Allocs {
@@ -15,6 +15,11 @@ impl Allocs {
                     .split_once(' ')
                     .expect("every line is word + space + freq");
                 let count: usize = count.parse().expect("every count a number");
+                let word = word
+                    .as_bytes()
+                    .try_into()
+                    .expect("every dict word is 5 chars");
+
                 (word, count)
             })),
         }
@@ -23,12 +28,12 @@ impl Allocs {
 
 #[derive(Debug, Copy, Clone)]
 struct Candidate {
-    word: &'static str,
+    word: &'static Word,
     goodness: f64,
 }
 
 impl Guesser for Allocs {
-    fn guess(&mut self, history: &[Guess]) -> String {
+    fn guess(&mut self, history: &[Guess]) -> Word {
         let mut best: Option<Candidate> = None;
 
         if let Some(last) = history.last() {
@@ -36,7 +41,7 @@ impl Guesser for Allocs {
         }
 
         if history.is_empty() {
-            return "tares".to_string();
+            return *b"tares";
         }
 
         let remaining_count: usize = self.remaining.iter().map(|(_, &c)| c).sum();
@@ -76,6 +81,6 @@ impl Guesser for Allocs {
             }
         }
 
-        best.unwrap().word.to_string()
+        *best.unwrap().word
     }
 }

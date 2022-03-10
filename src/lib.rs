@@ -5,8 +5,10 @@ pub mod algorithms;
 
 const DICTIONARY: &str = include_str!("../dictionary.txt");
 
+pub type Word = [u8; 5];
+
 pub struct Wordle {
-    dictionary: HashSet<&'static str>,
+    dictionary: HashSet<&'static Word>,
 }
 
 impl Wordle {
@@ -16,11 +18,14 @@ impl Wordle {
                 line.split_once(' ')
                     .expect("every line is word + space + freq")
                     .0
+                    .as_bytes()
+                    .try_into()
+                    .expect("every word should be five characters")
             })),
         }
     }
 
-    pub fn play<G: Guesser>(&self, answer: &'static str, mut guesser: G) -> Option<usize> {
+    pub fn play<G: Guesser>(&self, answer: Word, mut guesser: G) -> Option<usize> {
         let mut history = vec![];
 
         for i in 1..=32 {
@@ -29,9 +34,9 @@ impl Wordle {
                 return Some(i);
             }
 
-            assert!(self.dictionary.contains(&*guess));
+            assert!(self.dictionary.contains(&guess));
 
-            let correctness = Correctness::compute(answer, &guess);
+            let correctness = Correctness::compute(&answer, &guess);
             history.push(Guess {
                 word: Cow::Owned(guess),
                 mask: correctness,
@@ -50,14 +55,14 @@ pub enum Correctness {
 }
 
 impl Correctness {
-    fn compute(answer: &str, guess: &str) -> [Self; 5] {
+    fn compute(answer: &Word, guess: &Word) -> [Self; 5] {
         assert_eq!(answer.len(), 5);
         assert_eq!(guess.len(), 5);
 
         let mut c = [Correctness::Wrong; 5];
 
         // Mark green
-        for (i, (a, g)) in answer.chars().zip(guess.chars()).enumerate() {
+        for (i, (a, g)) in answer.iter().zip(guess.iter()).enumerate() {
             if a == g {
                 c[i] = Correctness::Correct;
             }
@@ -71,12 +76,12 @@ impl Correctness {
             }
         }
 
-        for (i, g) in guess.chars().enumerate() {
+        for (i, g) in guess.iter().enumerate() {
             if c[i] == Correctness::Correct {
                 continue;
             }
 
-            if answer.chars().enumerate().any(|(i, a)| {
+            if answer.iter().enumerate().any(|(i, a)| {
                 if a == g && !used[i] {
                     used[i] = true;
                     return true;
@@ -103,22 +108,22 @@ impl Correctness {
 }
 
 pub struct Guess<'a> {
-    pub word: Cow<'a, str>,
+    pub word: Cow<'a, Word>,
     pub mask: [Correctness; 5],
 }
 
 impl Guess<'_> {
-    pub fn matches(&self, word: &str) -> bool {
+    pub fn matches(&self, word: &Word) -> bool {
         return Correctness::compute(word, &self.word) == self.mask;
     }
 }
 
 pub trait Guesser {
-    fn guess(&mut self, history: &[Guess]) -> String;
+    fn guess(&mut self, history: &[Guess]) -> Word;
 }
 
-impl Guesser for fn(history: &[Guess]) -> String {
-    fn guess(&mut self, history: &[Guess]) -> String {
+impl Guesser for fn(history: &[Guess]) -> Word {
+    fn guess(&mut self, history: &[Guess]) -> Word {
         (*self)(history)
     }
 }
@@ -128,7 +133,7 @@ macro_rules! guesser {
     (|$history:ident| $impl:block) => {{
         struct G;
         impl $crate::Guesser for G {
-            fn guess(&mut self, $history: &[Guess]) -> String {
+            fn guess(&mut self, $history: &[Guess]) -> $crate::Word {
                 $impl
             }
         }
@@ -149,8 +154,8 @@ macro_rules! mask {
 #[cfg(test)]
 mod tests {
     mod guess_matcher {
-        use std::borrow::Cow;
         use crate::Guess;
+        use std::borrow::Cow;
 
         macro_rules! check {
             ($prev:literal + [$($mask:tt)+] allows $next:literal) => {
@@ -174,10 +179,10 @@ mod tests {
 
         #[test]
         fn matches() {
-            check!("abcde" + [C C C C C] allows "abcde");
-            check!("abcdf" + [C C C C C] disallows "abcde");
-            check!("abcde" + [W W W W W] allows "fghik");
-            check!("abcde" + [M M M M M] allows "eabcd");
+            check!(b"abcde" + [C C C C C] allows b"abcde");
+            check!(b"abcdf" + [C C C C C] disallows b"abcde");
+            check!(b"abcde" + [W W W W W] allows b"fghik");
+            check!(b"abcde" + [M M M M M] allows b"eabcd");
         }
     }
 
@@ -187,9 +192,9 @@ mod tests {
         #[test]
         fn genius() {
             let w = Wordle::new();
-            let guesser = guesser!(|_history| { "right".to_string() });
+            let guesser = guesser!(|_history| { *b"right" });
 
-            assert_eq!(w.play("right", guesser), Some(1));
+            assert_eq!(w.play(*b"right", guesser), Some(1));
         }
 
         #[test]
@@ -197,12 +202,12 @@ mod tests {
             let w = Wordle::new();
             let guesser = guesser!(|history| {
                 if history.len() == 1 {
-                    return "right".to_string();
+                    return *b"right";
                 }
-                return "wrong".to_string();
+                return *b"wrong";
             });
 
-            assert_eq!(w.play("right", guesser), Some(2));
+            assert_eq!(w.play(*b"right", guesser), Some(2));
         }
 
         #[test]
@@ -210,12 +215,12 @@ mod tests {
             let w = Wordle::new();
             let guesser = guesser!(|history| {
                 if history.len() == 2 {
-                    return "right".to_string();
+                    return *b"right";
                 }
-                return "wrong".to_string();
+                return *b"wrong";
             });
 
-            assert_eq!(w.play("right", guesser), Some(3));
+            assert_eq!(w.play(*b"right", guesser), Some(3));
         }
 
         #[test]
@@ -223,12 +228,12 @@ mod tests {
             let w = Wordle::new();
             let guesser = guesser!(|history| {
                 if history.len() == 3 {
-                    return "right".to_string();
+                    return *b"right";
                 }
-                return "wrong".to_string();
+                return *b"wrong";
             });
 
-            assert_eq!(w.play("right", guesser), Some(4));
+            assert_eq!(w.play(*b"right", guesser), Some(4));
         }
 
         #[test]
@@ -236,12 +241,12 @@ mod tests {
             let w = Wordle::new();
             let guesser = guesser!(|history| {
                 if history.len() == 4 {
-                    return "right".to_string();
+                    return *b"right";
                 }
-                return "wrong".to_string();
+                return *b"wrong";
             });
 
-            assert_eq!(w.play("right", guesser), Some(5));
+            assert_eq!(w.play(*b"right", guesser), Some(5));
         }
 
         #[test]
@@ -249,20 +254,20 @@ mod tests {
             let w = Wordle::new();
             let guesser = guesser!(|history| {
                 if history.len() == 5 {
-                    return "right".to_string();
+                    return *b"right";
                 }
-                return "wrong".to_string();
+                return *b"wrong";
             });
 
-            assert_eq!(w.play("right", guesser), Some(6));
+            assert_eq!(w.play(*b"right", guesser), Some(6));
         }
 
         #[test]
         fn oops() {
             let w = Wordle::new();
-            let guesser = guesser!(|_history| { "wrong".to_string() });
+            let guesser = guesser!(|_history| { *b"wrong" });
 
-            assert_eq!(w.play("right", guesser), None);
+            assert_eq!(w.play(*b"right", guesser), None);
         }
     }
 
@@ -271,32 +276,32 @@ mod tests {
 
         #[test]
         fn all_green() {
-            assert_eq!(Correctness::compute("abcde", "abcde"), mask![C C C C C]);
+            assert_eq!(Correctness::compute(b"abcde", b"abcde"), mask![C C C C C]);
         }
 
         #[test]
         fn all_grey() {
-            assert_eq!(Correctness::compute("zxywq", "abcde"), mask![W W W W W]);
+            assert_eq!(Correctness::compute(b"zxywq", b"abcde"), mask![W W W W W]);
         }
 
         #[test]
         fn all_yellow() {
-            assert_eq!(Correctness::compute("cedba", "abcde"), mask![M M M M M]);
+            assert_eq!(Correctness::compute(b"cedba", b"abcde"), mask![M M M M M]);
         }
 
         #[test]
         fn repeat_green() {
-            assert_eq!(Correctness::compute("aaabb", "aaacc"), mask![C C C W W]);
+            assert_eq!(Correctness::compute(b"aaabb", b"aaacc"), mask![C C C W W]);
         }
 
         #[test]
         fn repeat_yellow() {
-            assert_eq!(Correctness::compute("cccaa", "aaacc"), mask![M M W M M]);
+            assert_eq!(Correctness::compute(b"cccaa", b"aaacc"), mask![M M W M M]);
         }
 
         #[test]
         fn repeat_some_green() {
-            assert_eq!(Correctness::compute("aabbb", "caacc"), mask![W C M W W]);
+            assert_eq!(Correctness::compute(b"aabbb", b"caacc"), mask![W C M W W]);
         }
     }
 }
