@@ -47,7 +47,7 @@ impl Wordle {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Correctness {
     Correct,
     Misplaced,
@@ -56,9 +56,6 @@ pub enum Correctness {
 
 impl Correctness {
     fn compute(answer: &Word, guess: &Word) -> [Self; 5] {
-        assert_eq!(answer.len(), 5);
-        assert_eq!(guess.len(), 5);
-
         let mut c = [Correctness::Wrong; 5];
 
         // Mark green
