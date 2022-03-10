@@ -16,10 +16,11 @@ struct Args {
 #[derive(ArgEnum, Debug, Clone, Copy)]
 enum Implementation {
     Allocs,
-    Vecrem,
+    Cutoff,
     Once,
-    Weight,
     Prune,
+    Vecrem,
+    Weight,
 }
 
 fn main() {
@@ -27,10 +28,11 @@ fn main() {
 
     match args.implementation {
         Implementation::Allocs => play(hurdle::algorithms::Allocs::new, args.max),
-        Implementation::Vecrem => play(hurdle::algorithms::Vecrem::new, args.max),
+        Implementation::Cutoff => play(hurdle::algorithms::Cutoff::new, args.max),
         Implementation::Once => play(hurdle::algorithms::OnceInit::new, args.max),
-        Implementation::Weight => play(hurdle::algorithms::Weight::new, args.max),
         Implementation::Prune => play(hurdle::algorithms::Prune::new, args.max),
+        Implementation::Vecrem => play(hurdle::algorithms::Vecrem::new, args.max),
+        Implementation::Weight => play(hurdle::algorithms::Weight::new, args.max),
     }
 }
 
