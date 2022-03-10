@@ -19,6 +19,7 @@ enum Implementation {
     Vecrem,
     Once,
     Weight,
+    Prune,
 }
 
 fn main() {
@@ -29,6 +30,7 @@ fn main() {
         Implementation::Vecrem => play(hurdle::algorithms::Vecrem::new, args.max),
         Implementation::Once => play(hurdle::algorithms::OnceInit::new, args.max),
         Implementation::Weight => play(hurdle::algorithms::Weight::new, args.max),
+        Implementation::Prune => play(hurdle::algorithms::Prune::new, args.max),
     }
 }
 

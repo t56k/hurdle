@@ -1,7 +1,6 @@
+use crate::{Correctness, Guess, Guesser, Word, DICTIONARY};
 use std::borrow::Cow;
 use std::collections::HashMap;
-
-use crate::{Correctness, Guess, Guesser, Word, DICTIONARY};
 
 pub struct Allocs {
     remaining: HashMap<&'static Word, usize>,

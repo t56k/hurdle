@@ -1,8 +1,6 @@
-use std::borrow::Cow;
-
-use once_cell::sync::OnceCell;
-
 use crate::{Correctness, Guess, Guesser, Word, DICTIONARY};
+use once_cell::sync::OnceCell;
+use std::borrow::Cow;
 
 static INITIAL: OnceCell<Vec<(&'static Word, usize)>> = OnceCell::new();
 

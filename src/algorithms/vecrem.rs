@@ -1,6 +1,5 @@
-use std::borrow::Cow;
-
 use crate::{Correctness, Guess, Guesser, Word, DICTIONARY};
+use std::borrow::Cow;
 
 pub struct Vecrem {
     remaining: Vec<(&'static Word, usize)>,
