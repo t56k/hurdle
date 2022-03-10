@@ -72,8 +72,6 @@ impl Guesser for Cutoff {
         for &(word, count) in &*self.remaining {
             let mut sum = 0.0;
             let check_pattern = |pattern: &[Correctness; 5]| {
-                // considering a world where we _did_ guess `word` and got `pattern` as the
-                // correctness. now, compute what _then_ is left.
                 let mut in_pattern_total = 0;
                 let g = Guess {
                     word: Cow::Borrowed(word),
@@ -106,13 +104,8 @@ impl Guesser for Cutoff {
 
             let p_word = count as f64 / remaining_count as f64;
             let entropy = -sum;
-            // TODO: this should be (minimizing):
-            // (p_word * (history.len() + 1)) + ((1 - p_word) * estimate_remaining_guesses(remaining_entropy))
-            // where remaining_entropy is the existing entropy - entropy
-            // and restimate_remaining_guesses is computed by regression over historical data
             let goodness = p_word * entropy;
             if let Some(c) = best {
-                // Is this one better?
                 if goodness > c.goodness {
                     best = Some(Candidate { word, goodness });
                 }
