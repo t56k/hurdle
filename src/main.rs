@@ -18,6 +18,7 @@ enum Implementation {
     Allocs,
     Vecrem,
     Once,
+    Weight,
 }
 
 fn main() {
@@ -27,6 +28,7 @@ fn main() {
         Implementation::Allocs => play(hurdle::algorithms::Allocs::new, args.max),
         Implementation::Vecrem => play(hurdle::algorithms::Vecrem::new, args.max),
         Implementation::Once => play(hurdle::algorithms::OnceInit::new, args.max),
+        Implementation::Weight => play(hurdle::algorithms::Weight::new, args.max),
     }
 }
 
@@ -35,18 +37,21 @@ where
     G: Guesser,
 {
     let w = hurdle::Wordle::new();
-
+    let mut score = 0;
+    let mut games = 0;
     for answer in GAMES.split_whitespace().take(max.unwrap_or(usize::MAX)) {
         let answer_b: hurdle::Word = answer
             .as_bytes()
             .try_into()
             .expect("all answers are five chars");
         let guesser = (mk)();
-
-        if let Some(score) = w.play(answer_b, guesser) {
-            println!("guessed '{}' in {}", answer, score);
+        if let Some(s) = w.play(answer_b, guesser) {
+            games += 1;
+            score += s;
+            println!("guessed '{}' in {}", answer, s);
         } else {
             eprintln!("failed to guess");
         }
     }
+    println!("average score: {:.4}", score as f64 / games as f64);
 }
