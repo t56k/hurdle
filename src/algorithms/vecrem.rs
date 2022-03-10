@@ -1,16 +1,15 @@
 use std::borrow::Cow;
-use std::collections::HashMap;
 
 use crate::{Correctness, Guess, Guesser, DICTIONARY};
 
-pub struct Naive {
-    remaining: HashMap<&'static str, usize>,
+pub struct Vecrem {
+    remaining: Vec<(&'static str, usize)>,
 }
 
-impl Naive {
+impl Vecrem {
     pub fn new() -> Self {
-        Naive {
-            remaining: HashMap::from_iter(DICTIONARY.lines().map(|line| {
+        Self {
+            remaining: Vec::from_iter(DICTIONARY.lines().map(|line| {
                 let (word, count) = line
                     .split_once(' ')
                     .expect("every line is word + space + freq");
@@ -27,28 +26,28 @@ struct Candidate {
     goodness: f64,
 }
 
-impl Guesser for Naive {
+impl Guesser for Vecrem {
     fn guess(&mut self, history: &[Guess]) -> String {
         let mut best: Option<Candidate> = None;
 
         if let Some(last) = history.last() {
-            self.remaining.retain(|word, _| last.matches(word));
+            self.remaining.retain(|(word, _)| last.matches(word));
         }
 
         if history.is_empty() {
             return "tares".to_string();
         }
 
-        let remaining_count: usize = self.remaining.iter().map(|(_, &c)| c).sum();
+        let remaining_count: usize = self.remaining.iter().map(|&(_, c)| c).sum();
 
-        for (&word, _) in &self.remaining {
+        for &(word, _) in &self.remaining {
             let mut sum = 0.0;
 
             for pattern in Correctness::patterns() {
                 let mut in_pattern_total = 0;
                 for (candidate, count) in &self.remaining {
                     let g = Guess {
-                        word: Cow::Owned(word.to_string()),
+                        word: Cow::Borrowed(word),
                         mask: pattern,
                     };
 

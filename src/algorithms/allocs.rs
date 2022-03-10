@@ -3,13 +3,13 @@ use std::collections::HashMap;
 
 use crate::{Correctness, Guess, Guesser, DICTIONARY};
 
-pub struct Naive {
+pub struct Allocs {
     remaining: HashMap<&'static str, usize>,
 }
 
-impl Naive {
+impl Allocs {
     pub fn new() -> Self {
-        Naive {
+        Self {
             remaining: HashMap::from_iter(DICTIONARY.lines().map(|line| {
                 let (word, count) = line
                     .split_once(' ')
@@ -27,7 +27,7 @@ struct Candidate {
     goodness: f64,
 }
 
-impl Guesser for Naive {
+impl Guesser for Allocs {
     fn guess(&mut self, history: &[Guess]) -> String {
         let mut best: Option<Candidate> = None;
 
@@ -48,7 +48,7 @@ impl Guesser for Naive {
                 let mut in_pattern_total = 0;
                 for (candidate, count) in &self.remaining {
                     let g = Guess {
-                        word: Cow::Owned(word.to_string()),
+                        word: Cow::Borrowed(word),
                         mask: pattern,
                     };
 
