@@ -43,19 +43,23 @@ where
     let w = hurdle::Wordle::new();
     let mut score = 0;
     let mut games = 0;
+
     for answer in GAMES.split_whitespace().take(max.unwrap_or(usize::MAX)) {
         let answer_b: hurdle::Word = answer
             .as_bytes()
             .try_into()
             .expect("all answers are five chars");
+
         let guesser = (mk)();
+
         if let Some(s) = w.play(answer_b, guesser) {
             games += 1;
             score += s;
-            println!("guessed '{}' in {}", answer, s);
+            println!("guessed '{answer}' in {s}",);
         } else {
             eprintln!("failed to guess");
         }
     }
+
     println!("average score: {:.4}", score as f64 / games as f64);
 }
